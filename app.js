@@ -1,0 +1,139 @@
+const express = require("express");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const morganLogger = require("morgan");
+const cors = require("cors");
+const { randomUUID } = require("crypto");
+const session = require("express-session");
+
+const logger = require("./utils/logger");
+const AppError = require("./utils/AppError");
+
+const indexRouter = require("./routes/index");
+const authRouter = require("./routes/auth");
+
+require("dotenv").config();
+
+const app = express();
+
+if (process.env.NODE_ENV === "development") {
+    app.use(morganLogger("dev"));
+}
+
+app.set("views", path.join(__dirname, "templates"));
+app.set("view engine", "ejs");
+
+app.use(express.json());
+
+app.use(session({
+    name: "ui.sid",
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+    },
+}));
+
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(cors({
+    "origin": "*",
+    "methods": "GET,PUT,PATCH,POST,DELETE",
+}));
+app.use(express.static(path.join(__dirname, "public")));
+
+/**
+ * Attribution d'un identifiant unique à chaque requête
+ */
+app.use((req, res, next) => {
+    req.id = randomUUID();
+    res.setHeader("X-Request-Id", req.id);
+    next();
+});
+
+/**
+ * Logging des requêtes HTTP
+ */
+app.use((req, res, next) => {
+    const start = process.hrtime.bigint();
+
+    res.on("finish", () => {
+        const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+
+        logger.info({
+            timestamp: new Date().toISOString(),
+            request: {
+                id: req.id,
+                method: req.method,
+                path: req.originalUrl,
+                ip: req.ip,
+                userAgent: req.get("user-agent"),
+            },
+            response: {
+                statusCode: res.statusCode,
+                contentLength: res.getHeader("content-length"),
+                durationMs: Math.round(durationMs * 100) / 100,
+            },
+        });
+    });
+
+    next();
+});
+
+/**
+ * Routes principales de l'application
+ */
+app.use("/", [indexRouter, authRouter]);
+
+/**
+ * Gestion des routes non trouvées
+ */
+app.use((req, res, next) => {
+    next(new AppError(404, "ROUTE_NOT_FOUND", `Route ${req.method} ${req.path} not found`));
+});
+
+/**
+ * Gestion des erreurs
+ */
+app.use((err, req, res, _next) => {
+    const statusCode = err.statusCode || err.status || 500;
+    const now = new Date().toISOString();
+
+    logger.error({
+        timestamp: now,
+        request: {
+            id: req.id,
+            method: req.method,
+            path: req.originalUrl,
+            ip: req.ip,
+            userAgent: req.get("user-agent"),
+        },
+        user: req.user ? { id: req.userId } : null,
+        error: {
+            name: err.name,
+            code: err.code || "INTERNAL_SERVER_ERROR",
+            statusCode,
+            message: err.message,
+            stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,
+        },
+    });
+
+    const message =
+        process.env.NODE_ENV === "production" && statusCode === 500
+            ? "An unexpected error occurred"
+            : err.message;
+
+    res.status(statusCode);
+    res.render("error", {
+        error: {
+            code: err.code || "INTERNAL_SERVER_ERROR",
+            message: message,
+            stack: process.env.NODE_ENV !== "production" ? err.stack : undefined,
+        },
+    });
+});
+
+module.exports = app;
