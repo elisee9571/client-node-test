@@ -55,14 +55,18 @@ exports.signIn = async (req, res) => {
         const response = await api.post("/auth/login", req.body);
 
         req.session.accessToken = response.data.accessToken;
+        req.session.userId = response.data.user._id.toString();
 
-        return res.redirect("/");
+        const redirectTo = req.session.returnTo || "/";
+        delete req.session.returnTo;
+
+        return res.redirect(redirectTo);
 
     } catch (err) {
         const data = err.response?.data;
 
         return res.render("auth/login", {
-            title: "Sign up",
+            title: "Sign in",
             error: data.error?.message,
             values: { email: req.body.email },
         });

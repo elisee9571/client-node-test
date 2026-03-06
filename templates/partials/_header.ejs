@@ -12,23 +12,44 @@
 
 <body>
 
-<header
-    class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom container">
+<header class="bg-light">
     
-    <a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
-        <span class="fs-4">Simple header</span>
-    </a>
+    <div class="d-flex flex-wrap align-items-center justify-content-between py-3 border-bottom container">
+        
+        <a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
+            <span class="fs-4">MyForum</span>
+        </a>
 
-    <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-        <li><a href="/" class="nav-link px-2 link-active">Home</a></li>
-        <li><a href="#" class="nav-link px-2 link-secondary">Features</a></li>
-        <li><a href="#" class="nav-link px-2 link-secondary">Pricing</a></li>
-        <li><a href="#" class="nav-link px-2 link-secondary">FAQs</a></li>
-        <li><a href="#" class="nav-link px-2 link-secondary">About</a></li>
-    </ul>
-
-    <div class="col-md-3 text-end">
-        <a href="/login" class="btn btn-outline-primary me-2">Login</a>
-        <a href="/register" class="btn btn-primary">Sign-up</a>
+        <% if (req.session && req.session.accessToken) { %>
+            <div class="col-md-3 text-end">
+                <a href="/profile" class="btn btn-outline-primary me-2">Profile</a>
+                <a href="/logout" class="btn btn-danger">Logout</a>
+            </div>
+        <% } else { %>
+            <div class="col-md-3 text-end">
+                <a href="/login" class="btn btn-outline-primary me-2">Login</a>
+                <a href="/register" class="btn btn-primary">Sign-up</a>
+            </div>
+        <% } %>
     </div>
+
+    <div class="d-flex flex-wrap align-items-center justify-content-start py-2 container">
+        <ul class="nav nav-pills nav-fill col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+
+            <% const currentPath = req.baseUrl + req.path; %>
+            <li class="nav-item">
+                <a href="/" class="nav-link px-2 <%= currentPath === '/' ? 'active' : '' %>">
+                    Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/posts"
+                    class="nav-link px-2 <%= currentPath.startsWith('/posts') ? 'active' : '' %>">
+                    Posts
+                </a>
+            </li>
+
+        </ul>
+    </div>
+
 </header>

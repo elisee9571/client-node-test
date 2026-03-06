@@ -9,8 +9,11 @@ const session = require("express-session");
 const logger = require("./utils/logger");
 const AppError = require("./utils/AppError");
 
-const indexRouter = require("./routes/index");
-const authRouter = require("./routes/auth");
+const indexRouter = require("./routes/index.routes");
+const authRouter = require("./routes/auth.routes");
+const postsRouter = require("./routes/posts.routes");
+const usersRouter = require("./routes/users.routes");
+const commentsRouter = require("./routes/comments.routes");
 
 require("dotenv").config();
 
@@ -83,10 +86,17 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use((req, res, next) => {
+    res.locals.req = req;
+    next();
+});
+
 /**
  * Routes principales de l'application
  */
-app.use("/", [indexRouter, authRouter]);
+app.use("/", [indexRouter, authRouter, usersRouter]);
+app.use("/comments", commentsRouter);
+app.use("/posts", postsRouter);
 
 /**
  * Gestion des routes non trouvées
